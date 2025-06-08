@@ -1,0 +1,7 @@
+#root {
+  /* Supprimez les styles suivants pour permettre à l'application de s'étendre sur toute la largeur */
+  /* max-width: 1280px; */
+  /* margin: 0 auto; */
+  /* padding: 2rem; */
+  text-align: center; /* Gardez ceci si vous voulez que le texte soit centré par défaut dans le root */
+}
