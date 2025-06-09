@@ -1,4 +1,4 @@
-import { Hammer, ArrowLeft, PlusCircle, Edit, Trash2, Search } from 'lucide-react';
+import { Hammer, ArrowLeft, PlusCircle, Edit, Trash2, Search, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -44,15 +44,26 @@ interface Material {
   status: string;
   last_checked: string;
   description: string;
-  photo_url?: string; // Nouvelle colonne pour l'URL de la photo
+  photo_url?: string;
+  vehicle_id?: string | null; // Added vehicle_id
+}
+
+interface Vehicle {
+  id: string;
+  name: string;
+  plate_number: string;
 }
 
 export function MaterialsPage() {
   const { session } = useAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]); // New state for vehicles
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false); // New state for assign dialog
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null); // Material to assign
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null); // Vehicle to assign to
   const [newMaterial, setNewMaterial] = useState({
     name: '',
     type: '',
@@ -60,7 +71,7 @@ export function MaterialsPage() {
     location: '',
     status: 'Disponible',
     description: '',
-    photo_url: '', // Initialisation du champ photo_url
+    photo_url: '',
   });
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -96,8 +107,30 @@ export function MaterialsPage() {
     }
   };
 
+  const fetchVehicles = async () => {
+    if (!session) return;
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('id, name, plate_number')
+        .eq('user_id', session.user.id)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setVehicles(data || []);
+    } catch (err: any) {
+      console.error('Erreur lors du chargement des véhicules:', err.message);
+      toast({
+        title: 'Erreur',
+        description: `Échec du chargement des véhicules: ${err.message}`,
+        variant: 'destructive',
+      });
+    }
+  };
+
   useEffect(() => {
     fetchMaterials();
+    fetchVehicles(); // Fetch vehicles on component mount
   }, [session]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -148,7 +181,7 @@ export function MaterialsPage() {
         description: '',
         photo_url: '',
       });
-      setIsDialogOpen(false);
+      setIsAddDialogOpen(false);
       toast({
         title: 'Succès',
         description: 'Matériel ajouté avec succès !',
@@ -158,6 +191,51 @@ export function MaterialsPage() {
       toast({
         title: 'Erreur',
         description: `Échec de l'ajout du matériel: ${err.message}`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleOpenAssignDialog = (material: Material) => {
+    setSelectedMaterial(material);
+    setSelectedVehicleId(material.vehicle_id || null); // Pre-select if already assigned
+    setIsAssignDialogOpen(true);
+  };
+
+  const handleAssignMaterialToVehicle = async () => {
+    if (!session || !selectedMaterial) {
+      toast({
+        title: 'Erreur',
+        description: 'Session utilisateur non trouvée ou matériel non sélectionné.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('materials')
+        .update({ vehicle_id: selectedVehicleId })
+        .eq('id', selectedMaterial.id)
+        .eq('user_id', session.user.id);
+
+      if (error) throw error;
+
+      setMaterials((prev) =>
+        prev.map((mat) =>
+          mat.id === selectedMaterial.id ? { ...mat, vehicle_id: selectedVehicleId } : mat
+        )
+      );
+      setIsAssignDialogOpen(false);
+      toast({
+        title: 'Succès',
+        description: `Matériel "${selectedMaterial.name}" affecté avec succès !`,
+      });
+    } catch (err: any) {
+      console.error('Erreur lors de l\'affectation du matériel:', err.message);
+      toast({
+        title: 'Erreur',
+        description: `Échec de l'affectation du matériel: ${err.message}`,
         variant: 'destructive',
       });
     }
@@ -209,7 +287,7 @@ export function MaterialsPage() {
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600">
                 <PlusCircle className="mr-2 h-5 w-5" /> Ajouter un nouveau matériel
@@ -339,12 +417,13 @@ export function MaterialsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-100 dark:bg-gray-700">
-                  <TableHead className="w-[80px] text-gray-700 dark:text-gray-300">Photo</TableHead> {/* Nouvelle colonne */}
+                  <TableHead className="w-[80px] text-gray-700 dark:text-gray-300">Photo</TableHead>
                   <TableHead className="w-[150px] text-gray-700 dark:text-gray-300">Nom</TableHead>
                   <TableHead className="text-gray-700 dark:text-gray-300">Type</TableHead>
                   <TableHead className="text-gray-700 dark:text-gray-300">Quantité</TableHead>
                   <TableHead className="text-gray-700 dark:text-gray-300">Emplacement</TableHead>
                   <TableHead className="text-gray-700 dark:text-gray-300">Statut</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300">Affecté à</TableHead> {/* New column */}
                   <TableHead className="text-gray-700 dark:text-gray-300">Dernière vérif.</TableHead>
                   <TableHead className="text-right text-gray-700 dark:text-gray-300">Actions</TableHead>
                 </TableRow>
@@ -374,11 +453,26 @@ export function MaterialsPage() {
                     <TableCell className="text-gray-800 dark:text-gray-200">{material.location}</TableCell>
                     <TableCell className="text-gray-800 dark:text-gray-200">{material.status}</TableCell>
                     <TableCell className="text-gray-800 dark:text-gray-200">
+                      {material.vehicle_id ? (
+                        vehicles.find(v => v.id === material.vehicle_id)?.name || 'Inconnu'
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">Non affecté</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-gray-800 dark:text-gray-200">
                       {new Date(material.last_checked).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200">
                         <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200"
+                        onClick={() => handleOpenAssignDialog(material)}
+                      >
+                        <Car className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200">
                         <Trash2 className="h-4 w-4" />
@@ -391,6 +485,56 @@ export function MaterialsPage() {
           )}
         </div>
       </main>
+
+      {/* Assign Material Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+          <DialogHeader>
+            <DialogTitle>Affecter "{selectedMaterial?.name}" à un véhicule</DialogTitle>
+            <DialogDescription>
+              Sélectionnez le véhicule auquel vous souhaitez affecter ce matériel.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="vehicle" className="text-right">
+                Véhicule
+              </Label>
+              <Select onValueChange={setSelectedVehicleId} value={selectedVehicleId || ''}>
+                <SelectTrigger id="vehicle" className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600">
+                  <SelectValue placeholder="Sélectionner un véhicule" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                  {vehicles.length === 0 ? (
+                    <SelectItem value="no-vehicles" disabled>
+                      Aucun véhicule disponible
+                    </SelectItem>
+                  ) : (
+                    <>
+                      <SelectItem value="null">Non affecté</SelectItem> {/* Option to unassign */}
+                      {vehicles.map((vehicle) => (
+                        <SelectItem key={vehicle.id} value={vehicle.id}>
+                          {vehicle.name} ({vehicle.plate_number})
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={handleAssignMaterialToVehicle}
+              className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600"
+              disabled={!selectedVehicleId && selectedVehicleId !== null} // Disable if no vehicle selected, but allow null for unassign
+            >
+              Affecter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <footer className="w-full bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-6 text-center text-gray-600 dark:text-gray-400">
         <div className="container mx-auto px-4">

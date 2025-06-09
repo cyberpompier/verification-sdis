@@ -8,6 +8,7 @@ import { VerificationPage } from './pages/VerificationPage';
 import { VehiclesPage } from './pages/VehiclesPage';
 import { MaterialsPage } from './pages/MaterialsPage';
 import { PersonnelPage } from './pages/PersonnelPage';
+import { VehicleDetailPage } from './pages/VehicleDetailPage'; // Import the new page
 import './App.css';
 
 function App() {
@@ -46,6 +47,14 @@ function App() {
           element={
             <ProtectedRoute>
               <PersonnelPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vehicles/:vehicleId" // New route for vehicle detail page
+          element={
+            <ProtectedRoute>
+              <VehicleDetailPage />
             </ProtectedRoute>
           }
         />
