@@ -1,4 +1,4 @@
-import { Car, ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import { Car, ArrowLeft, Edit, Trash2, PlusCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface Vehicle {
   id: string;
@@ -49,10 +58,12 @@ export function VehiclesPage() {
   const [photo, setPhoto] = useState('');
   const [lien, setLien] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false); // New state for dialog
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loadingVehicles, setLoadingVehicles] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Fetch vehicles on component mount or session change
   useEffect(() => {
@@ -178,6 +189,7 @@ export function VehiclesPage() {
         setPhotoUrl('');
         setPhoto('');
         setLien('');
+        setIsDialogOpen(false); // Close dialog on success
       }
     } catch (error: any) {
       console.error('Erreur lors de l\'ajout du véhicule:', error.message);
@@ -237,6 +249,14 @@ export function VehiclesPage() {
     }
   };
 
+  const filteredVehicles = vehicles.filter(vehicle =>
+    vehicle.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vehicle.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vehicle.fire_station.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vehicle.plate_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vehicle.status.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col">
       <header className="sticky top-0 z-50 w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 shadow-sm">
@@ -256,7 +276,7 @@ export function VehiclesPage() {
       </header>
 
       <main className="flex-grow container mx-auto px-4 py-8">
-        <section className="text-center mb-12">
+        <section className="text-center mb-8">
           <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-4">
             Liste et gestion de vos véhicules
           </h2>
@@ -265,153 +285,176 @@ export function VehiclesPage() {
           </p>
         </section>
 
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 mb-8">
-          <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Ajouter un nouveau véhicule</h3>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="vehicleName" className="text-gray-700 dark:text-gray-300">Nom du véhicule</Label>
-              <Input
-                id="vehicleName"
-                type="text"
-                placeholder="Ex: FPTL 1"
-                value={vehicleName}
-                onChange={(e) => setVehicleName(e.target.value)}
-                className="mt-1"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="vehicleType" className="text-gray-700 dark:text-gray-300">Type de véhicule</Label>
-              <Input
-                id="vehicleType"
-                type="text"
-                placeholder="Ex: Fourgon Pompe Tonne Léger"
-                value={vehicleType}
-                onChange={(e) => setVehicleType(e.target.value)}
-                className="mt-1"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="fireStation" className="text-gray-700 dark:text-gray-300">Caserne d'affectation</Label>
-              <Input
-                id="fireStation"
-                type="text"
-                placeholder="Ex: Caserne de Paris"
-                value={fireStation}
-                onChange={(e) => setFireStation(e.target.value)}
-                className="mt-1"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="plateNumber" className="text-gray-700 dark:text-gray-300">Plaque d'immatriculation</Label>
-              <Input
-                id="plateNumber"
-                type="text"
-                placeholder="Ex: AB-123-CD"
-                value={plateNumber}
-                onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-                className="mt-1"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="capacity" className="text-gray-700 dark:text-gray-300">Capacité (personnel)</Label>
-              <Input
-                id="capacity"
-                type="number"
-                placeholder="Ex: 6"
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value === '' ? '' : parseInt(e.target.value))}
-                className="mt-1"
-                min="0"
-              />
-            </div>
-            <div>
-              <Label htmlFor="status" className="text-gray-700 dark:text-gray-300">Statut</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Sélectionner un statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Opérationnel">Opérationnel</SelectItem>
-                  <SelectItem value="En maintenance">En maintenance</SelectItem>
-                  <SelectItem value="Hors service">Hors service</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="photoUrl" className="text-gray-700 dark:text-gray-300">URL de la photo (optionnel)</Label>
-              <Input
-                id="photoUrl"
-                type="url"
-                placeholder="Ex: https://example.com/photo.jpg"
-                value={photoUrl}
-                onChange={(e) => setPhotoUrl(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="photo" className="text-gray-700 dark:text-gray-300">Photo (optionnel)</Label>
-              <Input
-                id="photo"
-                type="text"
-                placeholder="Ex: base64 ou nom de fichier"
-                value={photo}
-                onChange={(e) => setPhoto(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="lien" className="text-gray-700 dark:text-gray-300">Lien (optionnel)</Label>
-              <Input
-                id="lien"
-                type="url"
-                placeholder="Ex: https://wikipedia.org/wiki/FPTL"
-                value={lien}
-                onChange={(e) => setLien(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="equipmentList" className="text-gray-700 dark:text-gray-300">Liste d'équipement (optionnel)</Label>
-              <Textarea
-                id="equipmentList"
-                placeholder="Ex: Pompe 2000L/min, Défibrillateur, Lot de sauvetage..."
-                value={equipmentList}
-                onChange={(e) => setEquipmentList(e.target.value)}
-                className="mt-1 min-h-[80px]"
-              />
-            </div>
-            <div className="md:col-span-2 flex justify-end">
-              <Button
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Ajout en cours...' : 'Ajouter le véhicule'}
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
+          <div className="relative w-full md:w-1/3">
+            <Input
+              type="text"
+              placeholder="Rechercher un véhicule..."
+              className="pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600">
+                <PlusCircle className="mr-2 h-5 w-5" /> Ajouter un nouveau véhicule
               </Button>
-            </div>
-          </form>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+              <DialogHeader>
+                <DialogTitle>Ajouter un nouveau véhicule</DialogTitle>
+                <DialogDescription>
+                  Remplissez les informations ci-dessous pour ajouter un nouveau véhicule à votre inventaire.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="vehicleName" className="text-right">Nom</Label>
+                  <Input
+                    id="vehicleName"
+                    type="text"
+                    placeholder="Ex: FPTL 1"
+                    value={vehicleName}
+                    onChange={(e) => setVehicleName(e.target.value)}
+                    className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="vehicleType" className="text-right">Type</Label>
+                  <Input
+                    id="vehicleType"
+                    type="text"
+                    placeholder="Ex: Fourgon Pompe Tonne Léger"
+                    value={vehicleType}
+                    onChange={(e) => setVehicleType(e.target.value)}
+                    className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="fireStation" className="text-right">Caserne</Label>
+                  <Input
+                    id="fireStation"
+                    type="text"
+                    placeholder="Ex: Caserne de Paris"
+                    value={fireStation}
+                    onChange={(e) => setFireStation(e.target.value)}
+                    className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="plateNumber" className="text-right">Plaque</Label>
+                  <Input
+                    id="plateNumber"
+                    type="text"
+                    placeholder="Ex: AB-123-CD"
+                    value={plateNumber}
+                    onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+                    className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="capacity" className="text-right">Capacité</Label>
+                  <Input
+                    id="capacity"
+                    type="number"
+                    placeholder="Ex: 6"
+                    value={capacity}
+                    onChange={(e) => setCapacity(e.target.value === '' ? '' : parseInt(e.target.value))}
+                    className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                    min="0"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="status" className="text-right">Statut</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger id="status" className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600">
+                      <SelectValue placeholder="Sélectionner un statut" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                      <SelectItem value="Opérationnel">Opérationnel</SelectItem>
+                      <SelectItem value="En maintenance">En maintenance</SelectItem>
+                      <SelectItem value="Hors service">Hors service</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="photoUrl" className="text-right">URL Photo</Label>
+                  <Input
+                    id="photoUrl"
+                    type="url"
+                    placeholder="Ex: https://example.com/photo.jpg"
+                    value={photoUrl}
+                    onChange={(e) => setPhotoUrl(e.target.value)}
+                    className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="photo" className="text-right">Photo (Base64)</Label>
+                  <Input
+                    id="photo"
+                    type="text"
+                    placeholder="Ex: base64 ou nom de fichier"
+                    value={photo}
+                    onChange={(e) => setPhoto(e.target.value)}
+                    className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="lien" className="text-right">Lien</Label>
+                  <Input
+                    id="lien"
+                    type="url"
+                    placeholder="Ex: https://wikipedia.org/wiki/FPTL"
+                    value={lien}
+                    onChange={(e) => setLien(e.target.value)}
+                    className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="equipmentList" className="text-right">Équipement</Label>
+                  <Textarea
+                    id="equipmentList"
+                    placeholder="Ex: Pompe 2000L/min, Défibrillateur, Lot de sauvetage..."
+                    value={equipmentList}
+                    onChange={(e) => setEquipmentList(e.target.value)}
+                    className="col-span-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 min-h-[80px]"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button
+                    type="submit"
+                    className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Ajout en cours...' : 'Ajouter le véhicule'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8">
-          <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Véhicules existants</h3>
+        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
           {authLoading ? (
-            <p className="text-center text-gray-600 dark:text-gray-400">Chargement de la session utilisateur...</p>
+            <p className="p-8 text-center text-gray-600 dark:text-gray-400">Chargement de la session utilisateur...</p>
           ) : loadingVehicles ? (
-            <p className="text-center text-gray-600 dark:text-gray-400">Chargement des véhicules...</p>
+            <p className="p-8 text-center text-gray-600 dark:text-gray-400">Chargement des véhicules...</p>
           ) : fetchError ? (
-            <p className="text-center text-red-500 dark:text-red-400">{fetchError}</p>
-          ) : vehicles.length === 0 ? (
+            <p className="p-8 text-center text-red-500 dark:text-red-400">{fetchError}</p>
+          ) : filteredVehicles.length === 0 ? (
             <Card className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 max-w-md w-full text-center mx-auto">
               <CardHeader>
                 <CardTitle className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Aucun véhicule trouvé</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-700 dark:text-gray-300">
-                  Vous n'avez pas encore ajouté de véhicules. Utilisez le formulaire ci-dessus pour en ajouter un.
+                  Vous n'avez pas encore ajouté de véhicules. Utilisez le bouton "Ajouter un nouveau véhicule" ci-dessus pour en ajouter un.
                 </p>
               </CardContent>
             </Card>
@@ -419,24 +462,41 @@ export function VehiclesPage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Caserne</TableHead>
-                    <TableHead>Plaque</TableHead>
-                    <TableHead className="text-center">Capacité</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="bg-gray-100 dark:bg-gray-700">
+                    <TableHead className="w-[80px] text-gray-700 dark:text-gray-300">Photo</TableHead>
+                    <TableHead className="w-[150px] text-gray-700 dark:text-gray-300">Nom</TableHead>
+                    <TableHead className="text-gray-700 dark:text-gray-300">Type</TableHead>
+                    <TableHead className="text-gray-700 dark:text-gray-300">Caserne</TableHead>
+                    <TableHead className="text-gray-700 dark:text-gray-300">Plaque</TableHead>
+                    <TableHead className="text-center text-gray-700 dark:text-gray-300">Capacité</TableHead>
+                    <TableHead className="text-gray-700 dark:text-gray-300">Statut</TableHead>
+                    <TableHead className="text-right text-gray-700 dark:text-gray-300">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {vehicles.map((vehicle) => (
-                    <TableRow key={vehicle.id}>
-                      <TableCell className="font-medium">{vehicle.name}</TableCell>
-                      <TableCell>{vehicle.type}</TableCell>
-                      <TableCell>{vehicle.fire_station}</TableCell>
-                      <TableCell>{vehicle.plate_number}</TableCell>
-                      <TableCell className="text-center">{vehicle.capacity}</TableCell>
+                  {filteredVehicles.map((vehicle) => (
+                    <TableRow key={vehicle.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <TableCell>
+                        {vehicle.photo_url ? (
+                          <img
+                            src={vehicle.photo_url}
+                            alt={vehicle.name}
+                            className="w-12 h-12 object-cover rounded-md shadow-sm"
+                            onError={(e) => {
+                              e.currentTarget.src = 'https://via.placeholder.com/48?text=No+Image'; // Fallback image
+                            }}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs">
+                            N/A
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium text-gray-900 dark:text-gray-100">{vehicle.name}</TableCell>
+                      <TableCell className="text-gray-800 dark:text-gray-200">{vehicle.type}</TableCell>
+                      <TableCell className="text-gray-800 dark:text-gray-200">{vehicle.fire_station}</TableCell>
+                      <TableCell className="text-gray-800 dark:text-gray-200">{vehicle.plate_number}</TableCell>
+                      <TableCell className="text-center text-gray-800 dark:text-gray-200">{vehicle.capacity}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                           vehicle.status === 'Opérationnel' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
@@ -446,10 +506,10 @@ export function VehiclesPage() {
                           {vehicle.status}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
+                      <TableCell className="text-right">
+                        <div className="flex space-x-2 justify-end">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(vehicle.id)}
                             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
@@ -457,7 +517,7 @@ export function VehiclesPage() {
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(vehicle.id)}
                             className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
